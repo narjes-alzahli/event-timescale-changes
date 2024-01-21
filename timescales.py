@@ -31,10 +31,10 @@ for file in h5_files:
     
     # Load the data from the .h5 file
     D_orig = dd.io.load(file_path)
-    vox_N = D_orig[list(D_orig.keys())[0]]['SFix'].shape[2]
+    vox_N = D_orig[list(D_orig.keys())[0]]['Intact'].shape[2]
     D = np.zeros((30, 6, 60, vox_N))
     for i, s in enumerate(D_orig.keys()):
-        D[i] = D_orig[s]['SFix']
+        D[i] = D_orig[s]['Intact']
 
     G = D.mean(0)
 
@@ -42,7 +42,7 @@ for file in h5_files:
 
     LLs = np.empty((len(nEvents),6), dtype=object)
     corr_diffs = np.empty((len(nEvents),6), dtype=object)
-    ###############timescales = {}
+    timescales = {}
 
     num_timepoints = G.shape[1]
 
@@ -62,8 +62,13 @@ for file in h5_files:
             hmm.fit(train[repeat])
 
             #################################################################### LL begin
+            # meeting scramble = True, should fail, when the model doesn't work, 50 times or nulls
             _, LL = hmm.find_events(test[repeat])
             LLs[ev_i, repeat] = LL
+
+            for i in range(50):
+                _, LL = hmm.find_events(test[repeat], scramble=True)
+                
 
             ################################################################### WBC begin
             events = hmm.segments_[0]
@@ -90,7 +95,6 @@ for file in h5_files:
             corr_diffs[ev_i, repeat] = corr_diff
 
 
-
     ############################################################################ LL begin again
 
     # Normalize LL values to avoid underflow when exponentiating
@@ -113,6 +117,7 @@ for file in h5_files:
 
     eLL[area_name] = ll_weighted_avg_per_run
 
+
     ############################################################################ WBC begin again
 
     # Exponentiate the normalized WBC values
@@ -132,13 +137,11 @@ for file in h5_files:
     eWBC[area_name] = wbc_weighted_avg_per_run
 
     ############################################################################
-
-    '''
+    
     timescales['eLL'] = ll_weighted_avg_per_run
     timescales['eWBC'] = wbc_weighted_avg_per_run
 
     np.save(f'{area_name}.npy', timescales)
-    '''
 
     n = n+1
     tf = time.time()
@@ -147,5 +150,5 @@ for file in h5_files:
 
 
 # Save data to .npy file
-np.save('./scrambled_maps/LL/LL.npy', eLL)
-np.save('./scrambled_maps/WBC/WBC.npy', eWBC)
+np.save('./intact_maps/LL/LL_scrambled.npy', eLL)
+np.save('./intact_maps/WBC/WBC_scrambled.npy', eWBC)
